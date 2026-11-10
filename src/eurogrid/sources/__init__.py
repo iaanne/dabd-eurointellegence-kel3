@@ -1,0 +1,1 @@
+"""Klien sumber data eksternal."""

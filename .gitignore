@@ -1,0 +1,19 @@
+.venv/
+.env
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.DS_Store
+.openchamber/
+~lock*
+*~lock*
+
+# Materi kuliah dan salinan PDF di akar, bukan keluaran proyek.
+/End-to-End European Electricity Data Lakehouse & Market Intelligence Platform.pdf
+/spek.pdf
+/TBP_Advanced_Data_Platform.pdf
+/PRD.pdf
+/TEAM.pdf

@@ -1,0 +1,42 @@
+{
+  "schema_version": "2.0",
+  "endpoint": "price",
+  "country": "de",
+  "bidding_zone": "DE-LU",
+  "timezone": "Europe/Berlin",
+  "resolution": "PT15M",
+  "interval_minutes": 15,
+  "unit": "EUR / MWh",
+  "generated_at": "2026-11-09T08:58:08+01:00",
+  "available_from": "2026-11-06T00:00:00+01:00",
+  "available_until": "2026-11-06T23:45:00+01:00",
+  "series": [
+    {
+      "id": "day_ahead_price",
+      "name": "Day-ahead spot market price"
+    }
+  ],
+  "data": [
+    {
+      "timestamp": "2026-11-06T00:00:00+01:00",
+      "values": {
+        "day_ahead_price": 247.25
+      }
+    },
+    {
+      "timestamp": "2026-11-06T00:15:00+01:00",
+      "values": {
+        "day_ahead_price": 235.81
+      }
+    },
+    {
+      "timestamp": "2026-11-06T00:30:00+01:00",
+      "values": {
+        "day_ahead_price": 230.59
+      }
+    }
+  ],
+  "attributes": {},
+  "license": "CC BY 4.0 (creativecommons.org/licenses/by/4.0) from Bundesnetzagentur | SMARD.de",
+  "deprecated": false
+}

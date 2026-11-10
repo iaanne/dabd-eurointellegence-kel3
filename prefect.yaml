@@ -1,0 +1,22 @@
+n:me: eurogrid
+prefect-version: "3"
+
+build: null
+push: null
+pull: null
+
+deployments:
+  - name: production
+    description: Isi Bronze harian dari Energy-Charts dan Open-Meteo.
+    entrypoint: flows/bronze_daily.py:bronze_daily
+    tags:
+      - bronze
+      - daily
+    parameters:
+      days: 7
+    work_pool:
+      name: eurogrid-pool
+    schedules:
+      - cron: "0 5 * * *"
+        timezone: Europe/Berlin
+        active: true

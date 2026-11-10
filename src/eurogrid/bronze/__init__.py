@@ -1,0 +1,1 @@
+"""Penulisan lapisan Bronze."""
