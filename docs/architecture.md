@@ -38,6 +38,8 @@ Dokumen ini menjelaskan arsitektur target, keputusan teknis, dan batas resource.
 
 Jumlah memori maksimal sekitar 23,5 GB. Angka ini adalah anggaran, bukan hasil pengukuran. Batas akan disesuaikan setelah benchmark.
 
+Catatan implementasi per 2026-11-10: dua komponen masih memakai versi ringan dari target di atas. Katalog Iceberg berjalan dengan image `apache/iceberg-rest-fixture` dan metadata SQLite di dalam container, sedangkan server Prefect memakai SQLite pada volume `prefect-data`. Postgres belum dijalankan, sehingga metadata katalog hilang bila container dibuat ulang.
+
 ## 3. Alur batch
 
 ```
