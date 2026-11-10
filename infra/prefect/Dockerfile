@@ -8,7 +8,7 @@ COPY flows ./flows
 COPY prefect.yaml ./
 COPY infra/prefect/entrypoint.sh /usr/local/bin/entrypoint.sh
 
-RUN pip install --no-cache-dir -e ".[prefect]" \
+RUN pip install --no-cache-dir -e ".[prefect,iceberg]" \
     && chmod 755 /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

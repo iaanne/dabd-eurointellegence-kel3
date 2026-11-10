@@ -6,10 +6,11 @@ from typing import Any, Sequence
 from .bronze.writer import WriteResult, write_bronze_batch
 from .config import Settings, load_settings
 from .http import build_client
-from .sources import energy_charts, open_meteo
+from .sources import energy_charts, entsoe, open_meteo
 
 SOURCE_ENERGY_CHARTS = "energy_charts"
 SOURCE_OPEN_METEO = "open_meteo"
+SOURCE_ENTSOE = "entsoe"
 
 
 def result_payload(result: WriteResult) -> dict[str, Any]:
@@ -146,3 +147,64 @@ def ingest_weather(
     result_payload_["partition"] = partition_values
     result_payload_["variables"] = list(chosen)
     return result_payload_
+
+
+def ingest_entsoe(
+    *,
+    dataset: str = "actual_load",
+    start: str,
+    end: str,
+    bidding_zone: str = "10Y1001A1001A82H",
+    country: str = "de",
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    """Ambil beban aktual dari ENTSO-E lalu tulis batch Bronze.
+
+    Token tidak ikut tersimpan di metadata batch. Parameter permintaan disalin
+    dengan nilai ``securityToken`` diganti ``***``.
+    """
+    settings = settings or load_settings()
+    if not settings.entsoe_api_token:
+        raise ValueError(
+            "ENTSOE_API_TOKEN belum diisi. Tambahkan token ke .env lebih dulu."
+        )
+
+    with build_client(settings) as client:
+        xml_text, request_params = entsoe.fetch_document(
+            client,
+            settings.entsoe_api_url,
+            security_token=settings.entsoe_api_token,
+            dataset=dataset,
+            bidding_zone=bidding_zone,
+            start=start,
+            end=end,
+        )
+
+    envelope = entsoe.parse_document(xml_text)
+    frame = entsoe.to_long_frame(envelope, dataset=dataset, country=country)
+    partition_values = {"country": country, "bzn": bidding_zone}
+
+    result = write_bronze_batch(
+        settings.data_dir,
+        source=SOURCE_ENTSOE,
+        dataset=dataset,
+        partition_values=partition_values,
+        raw=envelope,
+        frame=frame,
+        request_url=settings.entsoe_api_url,
+        request_params=request_params,
+        license=envelope.get("license"),
+        extra_metadata={
+            "country": country,
+            "bidding_zone": bidding_zone,
+            "document_type": envelope.get("document_type"),
+            "process_type": envelope.get("process_type"),
+            "series_count": len(envelope.get("series") or []),
+            "xml_bytes": len(xml_text.encode("utf-8")),
+        },
+    )
+    payload = result_payload(result)
+    payload["dataset"] = dataset
+    payload["partition"] = partition_values
+    payload["series_count"] = len(envelope.get("series") or [])
+    return payload

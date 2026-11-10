@@ -3,12 +3,17 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Sequence
+from typing import Any, Sequence
 
 import httpx
 
 from .config import load_settings
-from .ingest import ingest_energy_charts, ingest_weather, resolve_window
+from .ingest import (
+    ingest_energy_charts,
+    ingest_entsoe,
+    ingest_weather,
+    resolve_window,
+)
 from .inspect import (
     find_batches,
     format_batch_table,
@@ -16,7 +21,7 @@ from .inspect import (
     load_batch_frame,
     newest_batch,
 )
-from .sources import energy_charts, open_meteo
+from .sources import energy_charts, entsoe, open_meteo
 
 
 def _default_dates(days: int = 7) -> tuple[str, str]:
@@ -44,6 +49,39 @@ def _ingest_weather(args: argparse.Namespace) -> dict[str, Any]:
         longitude=args.longitude,
         variables=variables,
     )
+
+
+def _ingest_entsoe(args: argparse.Namespace) -> dict[str, Any]:
+    return ingest_entsoe(
+        dataset=args.dataset,
+        start=args.start,
+        end=args.end,
+        bidding_zone=args.bzn,
+        country=args.country,
+    )
+
+
+def _publish_iceberg(args: argparse.Namespace) -> dict[str, Any]:
+    try:
+        from .bronze.warehouse import publish_bronze
+    except ImportError as exc:  # pragma: no cover - hanya saat extra belum dipasang
+        raise ValueError(
+            "PyIceberg belum terpasang. Jalankan `uv sync --extra iceberg`."
+        ) from exc
+
+    results = publish_bronze(only=args.table or None)
+    return {"tables": [result.to_dict() for result in results]}
+
+
+def _sync_bronze(args: argparse.Namespace) -> dict[str, Any]:
+    try:
+        from .bronze.warehouse import upload_bronze
+    except ImportError as exc:  # pragma: no cover - hanya saat extra belum dipasang
+        raise ValueError(
+            "PyArrow belum terpasang. Jalankan `uv sync` lebih dulu."
+        ) from exc
+
+    return upload_bronze()
 
 
 def _list_batches(args: argparse.Namespace) -> None:
@@ -159,6 +197,42 @@ def _build_parser() -> argparse.ArgumentParser:
     om.add_argument("--start", default=start, help="Tanggal awal, format YYYY-MM-DD.")
     om.add_argument("--end", default=end, help="Tanggal akhir, format YYYY-MM-DD.")
     om.set_defaults(handler=_ingest_weather)
+
+    ee = sub.add_parser(
+        "ingest-entsoe",
+        help="Ambil beban aktual dari ENTSO-E Transparency Platform.",
+    )
+    ee.add_argument(
+        "--dataset",
+        default="actual_load",
+        choices=sorted(entsoe.DATASETS),
+    )
+    ee.add_argument("--country", default="de", help="Kode negara, contoh de.")
+    ee.add_argument(
+        "--bzn",
+        default="10Y1001A1001A82H",
+        help="Kode EIC bidding zone, bawaan DE-LU.",
+    )
+    ee.add_argument("--start", default=start, help="Tanggal awal, format YYYY-MM-DD.")
+    ee.add_argument("--end", default=end, help="Tanggal akhir, format YYYY-MM-DD.")
+    ee.set_defaults(handler=_ingest_entsoe)
+
+    pub = sub.add_parser(
+        "publish-iceberg",
+        help="Tulis ulang batch Bronze sebagai tabel Iceberg di Garage.",
+    )
+    pub.add_argument(
+        "--table",
+        action="append",
+        help="Batasi ke nama tabel tertentu, boleh diulang.",
+    )
+    pub.set_defaults(handler=_publish_iceberg)
+
+    sync = sub.add_parser(
+        "sync-bronze",
+        help="Salin batch mentah ke bucket Bronze di Garage.",
+    )
+    sync.set_defaults(handler=_sync_bronze)
 
     list_parser = sub.add_parser(
         "list",

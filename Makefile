@@ -1,7 +1,7 @@
 START ?= $(shell date -d '7 days ago' +%F)
 END ?= $(shell date -d 'yesterday' +%F)
 
-.PHONY: setup test demo demo-power demo-price demo-weather list show docs clean prefect-up prefect-down prefect-deploy prefect-run prefect-logs
+.PHONY: setup test demo demo-power demo-price demo-weather demo-entsoe list show docs clean prefect-up prefect-down prefect-deploy prefect-run prefect-logs publish-iceberg sync-bronze
 
 setup:
 	uv sync --extra dev
@@ -21,13 +21,22 @@ demo-price:
 demo-weather:
 	uv run eurogrid ingest-weather --location berlin --latitude 52.52 --longitude 13.41 --start $(START) --end $(END)
 
-demo: demo-power demo-price demo-weather
+demo-entsoe:
+	uv run eurogrid ingest-entsoe --start $(START) --end $(END)
+
+demo: demo-power demo-price demo-weather demo-entsoe
 
 list:
 	uv run eurogrid list
 
 show:
 	uv run eurogrid show --dataset $(or $(DATASET),public_power)
+
+publish-iceberg:
+	uv run --extra iceberg eurogrid publish-iceberg
+
+sync-bronze:
+	uv run eurogrid sync-bronze
 
 clean:
 	rm -rf data .pytest_cache

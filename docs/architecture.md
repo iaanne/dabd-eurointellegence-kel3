@@ -38,7 +38,7 @@ Dokumen ini menjelaskan arsitektur target, keputusan teknis, dan batas resource.
 
 Jumlah memori maksimal sekitar 23,5 GB. Angka ini adalah anggaran, bukan hasil pengukuran. Batas akan disesuaikan setelah benchmark.
 
-Catatan implementasi per 2026-11-10: dua komponen masih memakai versi ringan dari target di atas. Katalog Iceberg berjalan dengan image `apache/iceberg-rest-fixture` dan metadata SQLite di dalam container, sedangkan server Prefect memakai SQLite pada volume `prefect-data`. Postgres belum dijalankan, sehingga metadata katalog hilang bila container dibuat ulang.
+Catatan implementasi per 2026-11-10: Postgres 16 sudah berjalan dan menjadi backend katalog Iceberg. Image katalog diturunkan dari `apache/iceberg-rest-fixture` dengan tambahan driver JDBC Postgres di `infra/iceberg/Dockerfile`, lalu dijalankan dengan `org.apache.iceberg.jdbc.JdbcCatalog`. Metadata katalog bertahan ketika container dibuat ulang. Server Prefect masih memakai SQLite pada volume `prefect-data`.
 
 ## 3. Alur batch
 
@@ -77,6 +77,10 @@ s3://eurogrid-bronze/
   open_meteo/weather_hourly/location=berlin/ingest_date=2026-11-09/batch_id=<checksum>/
 
 s3://eurogrid-warehouse/
+  bronze/energy_charts_public_power/
+  bronze/energy_charts_price/
+  bronze/open_meteo_weather_hourly/
+  bronze/entsoe_actual_load/
   silver/electricity_generation/
   silver/electricity_price/
   silver/weather_hourly/

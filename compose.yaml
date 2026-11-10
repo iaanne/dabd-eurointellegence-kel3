@@ -70,6 +70,11 @@ services:
       PREFECT_API_URL: http://prefect-server:4200/api
       PREFECT_SERVER_ANALYTICS_ENABLED: "false"
       EUROGRID_DATA_DIR: /data
+      ICEBERG_CATALOG_URI: http://iceberg-rest:8181
+      ICEBERG_WAREHOUSE: s3://eurogrid-warehouse/
+      GARAGE_S3_ENDPOINT: http://garage:3900
+      GARAGE_S3_REGION: garage
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
     volumes:
       - ./data:/data:Z
       - ./flows:/app/flows:ro,Z
@@ -77,15 +82,28 @@ services:
       - ./prefect.yaml:/app/prefect.yaml:ro,Z
 
   iceberg-rest:
-    image: docker.io/apache/iceberg-rest-fixture:1.10.1
+    build:
+      context: .
+      dockerfile: infra/iceberg/Dockerfile
+    image: localhost/eurogrid-iceberg-rest:latest
     container_name: eurogrid-iceberg-rest
     restart: unless-stopped
     depends_on:
       - garage
+      - postgres
     ports:
       - "8181:8181"
+    command:
+      - java
+      - -cp
+      - /usr/lib/iceberg-rest/iceberg-rest-adapter.jar:/opt/jdbc/postgresql-42.7.4.jar
+      - org.apache.iceberg.rest.RESTCatalogServer
     environment:
-      CATALOG_CATALOG_NAME: eurogrid
+      CATALOG_NAME: eurogrid
+      CATALOG_CATALOG__IMPL: org.apache.iceberg.jdbc.JdbcCatalog
+      CATALOG_URI: jdbc:postgresql://postgres:5432/iceberg
+      CATALOG_JDBC_USER: eurogrid
+      CATALOG_JDBC_PASSWORD: ${POSTGRES_PASSWORD:-eurogrid}
       CATALOG_WAREHOUSE: s3://eurogrid-warehouse/
       CATALOG_IO__IMPL: org.apache.iceberg.aws.s3.S3FileIO
       CATALOG_S3_ENDPOINT: http://garage:3900
@@ -97,7 +115,27 @@ services:
       AWS_DEFAULT_REGION: garage
       AWS_REQUEST_CHECKSUM_CALCULATION: when_required
 
+  postgres:
+    image: docker.io/library/postgres:16
+    container_name: eurogrid-postgres
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      POSTGRES_USER: eurogrid
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eurogrid}
+      POSTGRES_DB: iceberg
+    volumes:
+      - pg-data:/var/lib/postgresql/data:Z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eurogrid -d iceberg"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
 volumes:
   garage-meta:
   garage-data:
   prefect-data:
+  pg-data:

@@ -1,0 +1,13 @@
+.git
+.venv
+data
+.pytest_cache
+.ruff_cache
+.openchamber
+docs
+slides
+__pycache__
+*.pyc
+*.pdf
+.env
+.env.example
